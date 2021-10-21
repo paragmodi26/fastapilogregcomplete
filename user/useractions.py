@@ -10,7 +10,7 @@ from starlette.responses import JSONResponse
 
 import models
 from database import SessionLocal
-from user.schemas import UserLogin, Profile
+from user.schemas import UserLogin, Profile, UpdateProfile
 
 app = FastAPI(
     prefix="/user",
@@ -78,8 +78,25 @@ def user(Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
         print(user.name)
         return user
 
+
 @router.delete('/logout')
 def logout(Authorize: AuthJWT = Depends()):
     Authorize.jwt_required()
     Authorize.unset_jwt_cookies()
-    return {"msg":"Successfully logout"}
+    return {"msg": "Successfully logout"}
+
+
+@router.patch('/updateprofile/')
+def update_profile(user: UpdateProfile, db: Session = Depends(get_db),Authorize: AuthJWT = Depends()):
+    Authorize.jwt_required()
+    current_user = Authorize.get_jwt_subject()
+    existing_item = db.query(models.User).filter(models.User.email == current_user).first()
+    if existing_item is None:
+        msg = {"message": "User not found"}
+    else:
+        update_data = user.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(existing_item, key, value)
+        db.commit()
+        msg = {"message": "User Profile Update"}
+    return msg

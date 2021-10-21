@@ -7,11 +7,24 @@ class UserLogin(BaseModel):
 
 
 class Profile(BaseModel):
-    id:int
+    id: int
     name: str
     number: str
     email: EmailStr
     age: int
+    gender: str
+    address: str
+    status: bool
+
+    class Config:
+        orm_mode = True
+
+
+class UpdateProfile(BaseModel):
+    name: str
+    number: str
+    age: int
+    gender: str
     address: str
     status: bool
 
