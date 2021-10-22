@@ -4,6 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 metadata = Base.metadata
 
+
 class User(Base):
     __tablename__ = "User"
 
@@ -13,6 +14,14 @@ class User(Base):
     email = Column(String(25), index=True)
     age = Column(String(25), index=True)
     gender = Column(String(25), index=True)
-    address = Column(String(25), index=True,nullable=False)
+    address = Column(String(25), index=True, nullable=False)
     status = Column(String(25), index=True, default=True)
+    password = Column(String(250), index=True)
+
+
+class Admin(Base):
+    __tablename__ = "admin"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    username = Column(String(200), index=True, default="admin")
     password = Column(String(250), index=True)

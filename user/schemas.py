@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr
 
 
@@ -21,12 +23,20 @@ class Profile(BaseModel):
 
 
 class UpdateProfile(BaseModel):
-    name: str
-    number: str
-    age: int
-    gender: str
-    address: str
-    status: bool
+    name: Optional[str]
+    number: Optional[str]
+    age: Optional[int]
+    gender: Optional[str]
+    address: Optional[str]
+    status: Optional[bool]
+
+    class Config:
+        orm_mode = True
+
+
+class PasswordChange(BaseModel):
+    old_password: str
+    password: str
 
     class Config:
         orm_mode = True

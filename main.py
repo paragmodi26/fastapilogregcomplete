@@ -4,7 +4,8 @@ from typing import List
 from sqlalchemy.orm import Session
 
 import models
-from database import SessionLocal
+from admin import views
+from database import SessionLocal, get_db
 from schema import UsersList
 from user import useractions
 from user_reg_log import reglogin
@@ -13,14 +14,7 @@ app = FastAPI()
 
 app.include_router(reglogin.router)
 app.include_router(useractions.router)
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+app.include_router(views.router)
 
 
 @app.get("/all_user/", response_model=List[UsersList])

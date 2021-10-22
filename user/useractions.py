@@ -1,44 +1,12 @@
-from typing import List
-
-import bcrypt
-from fastapi import FastAPI, APIRouter, Depends, Request, HTTPException
+from fastapi import FastAPI, APIRouter, Depends
 from fastapi_jwt_auth import AuthJWT
-from fastapi_jwt_auth.exceptions import AuthJWTException
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from starlette.responses import JSONResponse
+from database import get_db
+from schema import Settings
+from user.functions import login, authorize, check_user, profile_update, password_change
+from user.schemas import UserLogin, Profile, UpdateProfile, PasswordChange
 
-import models
-from database import SessionLocal
-from user.schemas import UserLogin, Profile, UpdateProfile
-
-app = FastAPI(
-    prefix="/user",
-    tags=['User Actions']
-)
-router = APIRouter(
-    prefix="/user",
-    tags=['User Actions']
-)
-
-
-def check_password(plain_text_password, hashed_password):
-    # Check hashed password. Using bcrypt, the salt is saved into the hash itself
-    return bcrypt.checkpw(plain_text_password.encode('utf-8'), hashed_password.encode('utf-8'))
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-class Settings(BaseModel):
-    authjwt_secret_key: str = "secret"
-    authjwt_token_location: set = {"cookies"}
-    authjwt_cookie_csrf_protect: bool = False
+router = APIRouter(prefix="/user", tags=['User Actions'])
 
 
 @AuthJWT.load_config
@@ -48,35 +16,36 @@ def get_config():
 
 @router.post("/login")
 def user_login(user: UserLogin, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
-    checkuser = db.query(models.User).filter(models.User.email == user.email).first()
-    if checkuser:
-        checkpassword = check_password(user.password, checkuser.password)
-        if checkpassword is True:
-            access_token = Authorize.create_access_token(subject=user.email)
-            Authorize.set_access_cookies(access_token)
-            return access_token
-        else:
-            return HTTPException(status_code=400, detail="Wrong Password")
-    else:
-        return HTTPException(status_code=400, detail="user not Found")
+    return login(db, user, Authorize)
 
 
 @router.get("/Home")
 def user_home(Authorize: AuthJWT = Depends()):
-    Authorize.jwt_required()
-    current_user = Authorize.get_jwt_subject()
+    current_user = authorize(Authorize)
     return f"welcome {current_user}"
 
 
 @router.get('/profile', response_model=Profile)
 def user(Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
-    Authorize.jwt_required()
-    current_user = Authorize.get_jwt_subject()
-    print(current_user)
-    if current_user:
-        user = db.query(models.User).filter(models.User.email == current_user).first()
-        print(user.name)
-        return user
+    current_user = authorize(Authorize)
+
+    class UserEmail:
+        email = current_user
+
+    user = check_user(db, UserEmail)
+    return user
+
+
+@router.patch('/updateprofile/')
+def update_profile(user: UpdateProfile, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    current_user = authorize(Authorize)
+    return profile_update(db, user, current_user)
+
+
+@router.patch('/change_password/')
+def change_password(user: PasswordChange, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    current_user = authorize(Authorize)
+    return password_change(db, current_user, user)
 
 
 @router.delete('/logout')
@@ -84,19 +53,3 @@ def logout(Authorize: AuthJWT = Depends()):
     Authorize.jwt_required()
     Authorize.unset_jwt_cookies()
     return {"msg": "Successfully logout"}
-
-
-@router.patch('/updateprofile/')
-def update_profile(user: UpdateProfile, db: Session = Depends(get_db),Authorize: AuthJWT = Depends()):
-    Authorize.jwt_required()
-    current_user = Authorize.get_jwt_subject()
-    existing_item = db.query(models.User).filter(models.User.email == current_user).first()
-    if existing_item is None:
-        msg = {"message": "User not found"}
-    else:
-        update_data = user.dict(exclude_unset=True)
-        for key, value in update_data.items():
-            setattr(existing_item, key, value)
-        db.commit()
-        msg = {"message": "User Profile Update"}
-    return msg
