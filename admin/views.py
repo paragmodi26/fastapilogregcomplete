@@ -1,10 +1,12 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi_jwt_auth import AuthJWT
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from admin.functions import current_user_as_admin, fetch_user, login, fetch_all_users, authorize, generate_auth_token
-from admin.schemas import AdminLogin, AllUsers
+from sqlalchemy.util import asyncio
+
+from admin.functions import current_user_as_admin, login, fetch_all_users, authorize, user_delete, blockuser, \
+    unblockuser, send_mail, salary_post_add
+from admin.schemas import AdminLogin, AllUsers, SendMailSchema, UserDataAdd
 from database import get_db
 from schema import Settings
 
@@ -18,7 +20,7 @@ def get_config():
 
 @router.post('/login/')
 def admin_login(user: AdminLogin, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
-    response = login(db, user)
+    response = login(db, user, Authorize)
     return response
 
 
@@ -38,7 +40,7 @@ def block_user(email, db: Session = Depends(get_db), Authorize: AuthJWT = Depend
     current_user = authorize(Authorize)
     checkuser = current_user_as_admin(current_user, db)
     if checkuser:
-        response = fetch_user(db, email)
+        response = blockuser(db, email)
     else:
         response = HTTPException(status_code=400, detail="You are not Auth to block user")
     return response
@@ -49,10 +51,18 @@ def unblock_user(email, db: Session = Depends(get_db), Authorize: AuthJWT = Depe
     current_user = authorize(Authorize)
     checkuser = current_user_as_admin(current_user, db)
     if checkuser:
-        response = fetch_user(db, email)
+        response = unblockuser(db, email)
     else:
         response = HTTPException(status_code=400, detail="Your are not Authorize")
     return response
+
+
+@router.delete('/delete-user/{email}')
+def delete_user(email, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    current_user = authorize(Authorize)
+    checkuser = current_user_as_admin(current_user, db)
+    if checkuser:
+        return user_delete(db, email)
 
 
 @router.delete('/logout')
@@ -60,3 +70,17 @@ def logout(Authorize: AuthJWT = Depends()):
     Authorize.jwt_required()
     Authorize.unset_jwt_cookies()
     return {"msg": "Successfully logout"}
+
+
+@router.post('/add-salary-and-post/')
+def add_salary_and_post(user: UserDataAdd, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    current_user = authorize(Authorize)
+    checkuser = current_user_as_admin(current_user, db)
+    if checkuser:
+        return salary_post_add(db, user)
+
+
+@router.post('/send-mail-to-user')
+def mail_send(mail: SendMailSchema, Authorize: AuthJWT = Depends()):
+    print("hiii")
+    return asyncio.run(send_mail(mail))

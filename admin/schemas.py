@@ -1,5 +1,4 @@
-from pydantic import BaseModel
-
+from pydantic import BaseModel, EmailStr
 
 
 class AdminLogin(BaseModel):
@@ -20,3 +19,20 @@ class AllUsers(BaseModel):
     class Config:
         orm_mode = True
 
+
+class SendMailSchema(BaseModel):
+    email: EmailStr
+    subject: str
+    message: str
+
+    class Config:
+        orm_mode = True
+
+
+class UserDataAdd(BaseModel):
+    user_email: EmailStr
+    salary: str
+    post: str
+
+    class Cofig:
+        orm_mode = True

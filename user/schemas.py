@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List, Dict
 
 from pydantic import BaseModel, EmailStr
 
@@ -6,6 +6,14 @@ from pydantic import BaseModel, EmailStr
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+
+class Item(BaseModel):
+    salary: str
+    post: str
+
+    class Config:
+        orm_mode = True
 
 
 class Profile(BaseModel):
@@ -17,6 +25,7 @@ class Profile(BaseModel):
     gender: str
     address: str
     status: bool
+    salary: List[Item] = []
 
     class Config:
         orm_mode = True
